@@ -35,14 +35,15 @@ def save(path, var):
         np.save(path, var)
     elif path.endswith(".txt"):
         with open(path, 'w') as f:
-            if isinstance(var, basestring):
+            if isinstance(var, str):
                 f.write(var)
             else:
                 for i in var:
                     f.write(i)
                     f.write('\n')
     else:
-        raise NotImplementedError("Unknown extension: " + os.path.splitext(path)[1])
+        raise NotImplementedError(
+            "Unknown extension: " + os.path.splitext(path)[1])
 
 
 def load(path):
@@ -58,12 +59,13 @@ def load(path):
     """
     if path.endswith('.pkl'):
         with open(path, 'rb') as f:
-            return pickle.load(f)
+            return pickle.load(f, encoding='bytes')
     elif path.endswith('.txt'):
         with open(path, 'r') as f:
             return [x.rstrip('\n\r') for x in list(f)]
     else:
-        raise NotImplementedError("Unknown extension: " + os.path.splitext(path)[1])
+        raise NotImplementedError(
+            "Unknown extension: " + os.path.splitext(path)[1])
 
 
 def ensuredir(path):

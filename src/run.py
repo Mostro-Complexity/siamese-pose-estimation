@@ -13,9 +13,9 @@ from generators import SplitBatchGenerator, PosNegBatchGenerator
 from util.pose_utils import get_pose_count
 from util.training import exp_decay
 
-CAMERAS_FPATH = "../data/h36m/cameras.h5"
-DATABASE_FOLDER = "../data/h36m/"
-LOG_PATH = '../data/experiments'
+CAMERAS_FPATH = "data/h36m/cameras.h5"
+DATABASE_FOLDER = "data/h36m/"
+LOG_PATH = 'data/experiments'
 
 TRAIN_SUBJECT_IDS = [1, 5, 6, 7, 8]
 TEST_SUBJECT_IDS = [9, 11]
@@ -29,8 +29,8 @@ def run_experiment(test_dict_2d, test_dict_3d, train_dict_2d, train_dict_3d, tra
     """
     model = siamese_network(p)
 
-    print "Parameters:"
-    print p
+    print ("Parameters:")
+    print (p)
 
     ensuredir(out_path)
     save(os.path.join(out_path, 'params.txt'), str(p))
@@ -48,7 +48,7 @@ def run_experiment(test_dict_2d, test_dict_3d, train_dict_2d, train_dict_3d, tra
     callbacks.append(LogAllMillimeterError(normalisation_params['std_3d'], test_dict_actionwise, siamese=len(model.inputs) >= 2,
                                            csv=os.path.join(out_path, 'metrics.log')))
 
-    print "Output folder is", out_path
+    print ("Output folder is", out_path)
     result = model.fit_generator(train_generator,
                                  steps_per_epoch=p.TRAIN_SIZE / p.batch_size, epochs=p.num_epochs, callbacks=callbacks,
                                  validation_data=valid_generator, validation_steps=p.VALID_SIZE / p.batch_size, verbose=2)
@@ -96,9 +96,9 @@ def train(use_augmentation, cross_camera, epochs, model_folder):
     assert not use_augmentation or data_type_2d == '2dgt' or data_type_2d == '2dshft', \
         "USE_AUGMENTED_CAMS only works with GT or SH-FT data"
 
-    print "Start loading data"
+    print ("Start loading data")
     if use_augmentation:
-        data_if = H36M(CAMERAS_FPATH, DATABASE_FOLDER, '../data/h36m/aug-cams.pkl', frame_density=frame_density)
+        data_if = H36M(CAMERAS_FPATH, DATABASE_FOLDER, 'data/h36m/aug-cams.pkl', frame_density=frame_density)
     else:
         data_if = H36M(CAMERAS_FPATH, DATABASE_FOLDER, frame_density=frame_density)
 
@@ -118,7 +118,7 @@ def train(use_augmentation, cross_camera, epochs, model_folder):
     train_dict_3d = data_if.get_data_dict('3dgt', camera_names=train_camera_names, subject_ids=TRAIN_SUBJECT_IDS)
     test_dict_3d = data_if.get_data_dict('3dgt', camera_names=test_camera_names, subject_ids=TEST_SUBJECT_IDS)
     train_dict_3d_absolute = data_if.get_data_dict('3dorig', camera_names=None, subject_ids=TRAIN_SUBJECT_IDS)
-    train_dict_3d_absolute = {(k[0], k[1], k[2]): v for k, v in train_dict_3d_absolute.iteritems()}
+    train_dict_3d_absolute = {(k[0], k[1], k[2]): v for k, v in train_dict_3d_absolute.items()}
 
     for k in train_dict_2d:
         assert len(train_dict_2d[k]) == len(train_dict_3d[k]), "Error for key " + str(k)
@@ -151,7 +151,7 @@ def train(use_augmentation, cross_camera, epochs, model_folder):
 
         test_dict_actionwise[action_name] = {'x': action2d, 'y': action3d}
 
-    print "Data loaded"
+    print ("Data loaded")
 
     p = siamese_params(test_dict_2d, train_dict_2d)
     p.use_augmented_cams = use_augmentation
@@ -218,7 +218,7 @@ def main():
     parser.add_argument("--use-augmentation", help="use additional augmented camera views", action="store_true")
     parser.add_argument("--cross-camera", help="use Protocol 3", action="store_true")
     parser.add_argument('--epochs', default=100, type=int, help='number of epochs to train the model')
-    parser.add_argument('--model-folder', default='../data/model', type=str, help='folder where the model is saved/loaded from')
+    parser.add_argument('--model-folder', default='data/generated_model', type=str, help='folder where the model is saved/loaded from')
     args = parser.parse_args()
 
     if args.eval:

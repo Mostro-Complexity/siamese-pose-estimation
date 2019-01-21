@@ -16,10 +16,12 @@ H36_JOINT_SHORT_NAMES16_2D = ['hp', 'Rhp', 'Rkn', 'Rft', 'Lhp', 'Lkn', 'Lft', 's
 H36_JOINT_SHORT_NAMES16_3D = ['Rhp', 'Rkn', 'Rft', 'Lhp', 'Lkn', 'Lft', 'spi', 'tho',
                               'nn', 'hed', 'Lsh', 'Lel', 'Lwr', 'Rsh', 'Rel', 'Rwr']
 
-KEEP_JOINTS_2D = np.asarray([0, 1, 2, 3, 6, 7, 8, 12, 13, 15, 17, 18, 19, 25, 26, 27], dtype=np.int32)
-KEEP_JOINTS_3D = np.asarray([1, 2, 3, 6, 7, 8, 12, 13, 14, 15, 17, 18, 19, 25, 26, 27], dtype=np.int32)
+KEEP_JOINTS_2D = np.asarray(
+    [0, 1, 2, 3, 6, 7, 8, 12, 13, 15, 17, 18, 19, 25, 26, 27], dtype=np.int32)
+KEEP_JOINTS_3D = np.asarray(
+    [1, 2, 3, 6, 7, 8, 12, 13, 14, 15, 17, 18, 19, 25, 26, 27], dtype=np.int32)
 
-# limb graphs must have the following form: list of tuple(j0 - int, j1 - int) 
+# limb graphs must have the following form: list of tuple(j0 - int, j1 - int)
 #                                                   where values of j0 must not be present later in the list anywhere
 LIMBGRAPH_17 = [(16, 15), (15, 14), (14, 8),
                 (13, 12), (12, 11), (11, 8),
@@ -98,7 +100,8 @@ class H36M():
         Sets members:
             self.cam_dict: dictionary of 4 tuples per subject ID containing its camera parameters for the 4 h36m cams
         """
-        self.cam_dict = cameras.load_cameras(self.cameras_fpath, self.all_subject_ids)
+        self.cam_dict = cameras.load_cameras(
+            self.cameras_fpath, self.all_subject_ids)
         if augmented_cameras_path is not None:
             aug_cams = load(augmented_cameras_path)
             self.cam_dict.update(aug_cams)
@@ -160,12 +163,16 @@ class H36M():
                                                                         self.all_subject_ids, self.all_action_names,
                                                                         frame_density=frame_density)
 
-        pose_data_3d_allcams = data_utils.transform_world_to_camera(pose_data_3d_orig, self.cam_dict, ncams=ncams)
-        self.pose_data_2d_gt = data_utils.project_to_cameras(pose_data_3d_orig, self.cam_dict, ncams=ncams)
+        pose_data_3d_allcams = data_utils.transform_world_to_camera(
+            pose_data_3d_orig, self.cam_dict, ncams=ncams)
+        self.pose_data_2d_gt = data_utils.project_to_cameras(
+            pose_data_3d_orig, self.cam_dict, ncams=ncams)
 
         # only 3d is translated (hip joint moved to origin, and thus hip joint vlaues are not included in the final 16 joints for 3d)
-        self.pose_data_3d_orig, self.pose_data_3d_orig_rootpos = data_utils.postprocess_3d(pose_data_3d_orig)
-        self.pose_data_3d_allcams, self.pose_data_3d_allcams_rootpos = data_utils.postprocess_3d(pose_data_3d_allcams)
+        self.pose_data_3d_orig, self.pose_data_3d_orig_rootpos = data_utils.postprocess_3d(
+            pose_data_3d_orig)
+        self.pose_data_3d_allcams, self.pose_data_3d_allcams_rootpos = data_utils.postprocess_3d(
+            pose_data_3d_allcams)
 
     def get_data_dict(self, data_name, action_names=None, camera_names=None, subject_ids=None):
         """
@@ -231,7 +238,8 @@ class H36M():
                 else:
                     arr = drop_unused_joints(arr)
 
-            ret_dict[(subj_id, action_name, seq_name, camera_name)] = np.copy(arr)
+            ret_dict[(subj_id, action_name, seq_name,
+                      camera_name)] = np.copy(arr)
 
         return ret_dict
 
@@ -264,7 +272,7 @@ def pose_dict_mean_std(data_dict):
         data_mean, data_std: ndarray(nJoints=16, nCoords=(2 or 3)) of float64
     """
     EPSILON = .00001
-    conc_data = np.concatenate(data_dict.values(), axis=0)
+    conc_data = np.concatenate(list(data_dict.values()), axis=0)
     data_mean = np.mean(conc_data, axis=0)
     data_std = np.std(conc_data, axis=0)
     if np.any(data_std < EPSILON):
@@ -325,8 +333,10 @@ def create_dataset(pose_dict_2d, pose_dict_3d, all_cam_names, nSamples=None):
                 matching_keys_2d.append(key3d)
         else:
             # 3d dict is not in camera frame, so each 3d array may match multiple 2d arrays (one for each camera)
-            possible_keys_2d = [(subj_id, action_name, fname3d, cam_name) for cam_name in all_cam_names]
-            matching_keys_2d = list(set(pose_dict_2d.keys()) & set(possible_keys_2d))
+            possible_keys_2d = [(subj_id, action_name, fname3d, cam_name)
+                                for cam_name in all_cam_names]
+            matching_keys_2d = list(
+                set(pose_dict_2d.keys()) & set(possible_keys_2d))
 
         # if there are multiple matching 2d keys for a single 3d key, add all corresponding 2d arrays to the list
         #            together with copies of the 3d array
@@ -337,15 +347,18 @@ def create_dataset(pose_dict_2d, pose_dict_3d, all_cam_names, nSamples=None):
 
     assert len(dataset_arrays_2d) == len(dataset_arrays_3d)
 
-    dataset_2d = np.concatenate(dataset_arrays_2d, axis=0)  # (nTotalTimePoints, 16, 2)
-    dataset_3d = np.concatenate(dataset_arrays_3d, axis=0)  # (nTotalTimePoints, 16, 3)
+    # (nTotalTimePoints, 16, 2)
+    dataset_2d = np.concatenate(dataset_arrays_2d, axis=0)
+    # (nTotalTimePoints, 16, 3)
+    dataset_3d = np.concatenate(dataset_arrays_3d, axis=0)
 
     assert dataset_2d.shape[1:] == (16, 2)
     assert dataset_3d.shape[1:] == (16, 3)
 
     if nSamples is not None:
         # random sample dataset
-        idxs = np.random.randint(low=0, high=dataset_2d.shape[0], size=nSamples)
+        idxs = np.random.randint(
+            low=0, high=dataset_2d.shape[0], size=nSamples)
         dataset_2d = dataset_2d[idxs]  # (nSamples, 16, 2)
         dataset_3d = dataset_3d[idxs]  # (nSamples, 16, 3)
 

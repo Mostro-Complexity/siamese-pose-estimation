@@ -1,7 +1,7 @@
 import numpy as np
 import keras
 import data_sources.h36m_interface as H36M
-from itertools import izip_longest
+from itertools import zip_longest
 
 
 class LogAllMillimeterError(keras.callbacks.Callback):
@@ -69,61 +69,76 @@ class LogAllMillimeterError(keras.callbacks.Callback):
                 # We are too lazy to cut the network in half and create a new model, instead just use
                 # both branches of the siamese net
                 N = len(self.data_2d[action_name])
-                inputs = [self.data_2d[action_name][:N / 2, :], self.data_2d[action_name][N / 2:, :]]
-                inputs.append(np.zeros((N / 2, 3, 3)))  # Add dummy values
+                inputs = [self.data_2d[action_name][:N // 2, :],
+                          self.data_2d[action_name][N // 2:, :]]
+                inputs.append(np.zeros((N // 2, 3, 3)))  # Add dummy values
 
                 # Result is [pose1, pose2, embedding_dist]
-                result = self.model.predict(inputs, batch_size=256, verbose=0)  # (nSample, 16*3)
+                result = self.model.predict(
+                    inputs, batch_size=256, verbose=0)  # (nSample, 16*3)
 
-                err1 = self.calculate_error(result[0], self.data_3d_mm[action_name][:N / 2, :])
-                err2 = self.calculate_error(result[1], self.data_3d_mm[action_name][N / 2:, :])
+                err1 = self.calculate_error(
+                    result[0], self.data_3d_mm[action_name][:N // 2, :])
+                err2 = self.calculate_error(
+                    result[1], self.data_3d_mm[action_name][N // 2:, :])
                 errs = np.concatenate([err1, err2], axis=0)
                 assert len(errs.shape) == 2 and errs.shape[1] == 16, errs.shape
             else:
-                preds = self.model.predict(self.data_2d[action_name], batch_size=256, verbose=0)  # (nSample, 16*3)
-                errs = self.calculate_error(preds, self.data_3d_mm[action_name])
+                preds = self.model.predict(
+                    self.data_2d[action_name], batch_size=256, verbose=0)  # (nSample, 16*3)
+                errs = self.calculate_error(
+                    preds, self.data_3d_mm[action_name])
 
             action_pctiles[action_name] = np.percentile(errs, self.pctiles)
-            action_means[action_name] = np.mean(errs) * float(16. / 17.)  # Multiplying by 16/17 to account for the hip
+            # Multiplying by 16/17 to account for the hip
+            action_means[action_name] = np.mean(errs) * float(16. / 17.)
             all_errs.append(errs)
 
         all_errs = np.concatenate(all_errs)
         joint_means = np.mean(all_errs, axis=0)
         joint_pctiles = np.percentile(all_errs, self.pctiles, axis=0)
 
-        assert len(all_errs.shape) == 2 and all_errs.shape[1] == 16, all_errs.shape
+        assert len(
+            all_errs.shape) == 2 and all_errs.shape[1] == 16, all_errs.shape
         assert joint_means.shape == (16,), joint_means.shape
-        assert joint_pctiles.shape == (len(self.pctiles), 16), joint_pctiles.shape
+        assert joint_pctiles.shape == (
+            len(self.pctiles), 16), joint_pctiles.shape
         assert self.pctiles[-2] == 99, "Currently the second to last percentile is harcoded to be 99 for printing"
 
         if self.csv is not None:
             with open(self.csv, 'a') as f:
                 for action_name in sorted(self.data_2d.keys()):
-                    f.write('%d,%s,%s,%f' % (epoch, 'action', action_name, action_means[action_name]))
+                    f.write('%d,%s,%s,%f' % (epoch, 'action',
+                                             action_name, action_means[action_name]))
                     for i in range(len(self.pctiles)):
                         f.write(',%f' % action_pctiles[action_name][i])
                     f.write('\n')
 
                 for joint_id in range(16):
-                    f.write('%d,%s,%s,%f' % (epoch, 'joint', H36M.H36_JOINT_NAMES16_3D[joint_id], joint_means[joint_id]))
+                    f.write('%d,%s,%s,%f' % (
+                        epoch, 'joint', H36M.H36_JOINT_NAMES16_3D[joint_id], joint_means[joint_id]))
                     for i in range(len(self.pctiles)):
                         f.write(',%f' % joint_pctiles[i, joint_id])
                     f.write('\n')
 
-        print(" ----- Per action and joint errors in millimeter on the validation set ----- ")
-        print "    %12s   %6s      %6s   \t %16s  %6s      %6s" % ('Action', 'Avg', '99%', '', 'Avg', '99%')
-        for action_name, joint_id in izip_longest(sorted(self.data_2d.keys()), range(16)):
+        print(
+            " ----- Per action and joint errors in millimeter on the validation set ----- ")
+        print("    %12s   %6s      %6s   \t %16s  %6s      %6s" %
+              ('Action', 'Avg', '99%', '', 'Avg', '99%'))
+        for action_name, joint_id in zip_longest(sorted(self.data_2d.keys()), range(16)):
             if action_name is not None:
                 action_str = "    %-12s:  %6.2f mm   %6.2f mm\t " \
                              % (str(action_name), action_means[action_name], action_pctiles[action_name][-2])
             else:
                 action_str = " " * 49
 
-            print('%s%9s (#%2d):  %6.2f mm   %6.2f mm ' % (action_str, H36M.H36_JOINT_NAMES16_3D[joint_id], joint_id,
-                                                           joint_means[joint_id], joint_pctiles[-2, joint_id]))
+            print(('%s%9s (#%2d):  %6.2f mm   %6.2f mm ' % (action_str, H36M.H36_JOINT_NAMES16_3D[joint_id], joint_id,
+                                                            joint_means[joint_id], joint_pctiles[-2, joint_id])))
 
-        mean_action_err = np.mean(np.asarray(action_means.values(), dtype=np.float32))
+        mean_action_err = np.mean(np.asarray(
+            list(action_means.values()), dtype=np.float32))
         self.mean_action_err = mean_action_err
         pctile99 = np.percentile(all_errs, 99)
-        print("\n Mean action error is %6.2f mm, total 99%% prctile is %6.2f." % (mean_action_err, pctile99))
+        print(("\n Mean action error is %6.2f mm, total 99%% prctile is %6.2f." % (
+            mean_action_err, pctile99)))
         print(" ---------------------------------------------------------------- ")

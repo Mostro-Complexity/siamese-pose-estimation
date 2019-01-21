@@ -22,7 +22,7 @@ class BaseGenerator(object):
     def __iter__(self):
         return self
 
-    def next(self):
+    def __next__(self):
         self._advance_batch()
         if self.batch_start == 0:
             self.first_batch()
@@ -72,15 +72,18 @@ class SplitBatchGenerator(BaseGenerator):
 
         self.framelist, self.keys = keys_to_stack(x)
 
-        super(SplitBatchGenerator, self).__init__(len(self.framelist) / 2, params.batch_size, y is not None)
+        super(SplitBatchGenerator, self).__init__(
+            len(self.framelist) // 2, params.batch_size, y is not None)
 
     def first_batch(self):
         n = len(self.framelist)
-        self.index_array = np.random.permutation(n) if self.shuffle else np.arange(n)
+        self.index_array = np.random.permutation(
+            n) if self.shuffle else np.arange(n)
 
     def get_batch(self, data, width):
         current_batch_size = self.batch_end - self.batch_start
-        batch_frames = self.framelist[self.index_array[2 * self.batch_start: 2 * self.batch_end]]
+        batch_frames = self.framelist[self.index_array[
+            2 * self.batch_start: 2 * self.batch_end]]
 
         # Generate batch of x values
         # Note that Keras expects list of numpy arrays for multiple inputs
@@ -89,19 +92,20 @@ class SplitBatchGenerator(BaseGenerator):
                  np.zeros((current_batch_size, width), dtype=K.floatx())]
 
         for i, (fnum, vid_id) in enumerate(batch_frames):
-            batch[i % 2][i / 2] = data[self.keys[vid_id]][fnum].flatten()
+            batch[i % 2][i // 2] = data[self.keys[vid_id]][fnum].flatten()
 
         return batch
 
     def get_x_batch(self):
         x_batch = self.get_batch(self.x, 32)
-        x_batch.append(self.empty_rot[:(self.batch_end - self.batch_start), :, :])
+        x_batch.append(
+            self.empty_rot[:self.batch_end - self.batch_start, :, :])
 
         return x_batch
 
     def get_y_batch(self):
         y_batch = self.get_batch(self.y, 48)
-        y_batch.append(self.empty_y[:(self.batch_end - self.batch_start), :])
+        y_batch.append(self.empty_y[:self.batch_end - self.batch_start, :])
 
         return y_batch
 
@@ -116,7 +120,8 @@ class PosNegBatchGenerator(BaseGenerator):
     def __init__(self, x, y, params, shuffle=False, cams=None, train_dict_3d_absolute=None):
         assert 0 <= params.pos_pairs_ratio <= 1, "pos_pairs_ratio must be between 0 and 1"
         assert y is not None, "The generator is onnly usable for training"
-        assert params.siamese_loss in ['pose_dist_loss', 'contrastive_loss', 'mean_squared_error']
+        assert params.siamese_loss in [
+            'pose_dist_loss', 'contrastive_loss', 'mean_squared_error']
 
         self.x = x
         self.y = y
@@ -125,19 +130,21 @@ class PosNegBatchGenerator(BaseGenerator):
 
         self.poselist, self.keys = pose_index(x)
 
-        self.absolute_pose = stack_by_keys(train_dict_3d_absolute, self.poselist, self.keys)
+        self.absolute_pose = stack_by_keys(
+            train_dict_3d_absolute, self.poselist, self.keys)
         assert self.absolute_pose.shape[1:] == (16, 3)
 
         self.cam_cnt = len(params.train_camera_names)
         self.create_matrix_dict(cams)
 
-        super(PosNegBatchGenerator, self).__init__(len(self.poselist), params.batch_size, y is not None)
+        super(PosNegBatchGenerator, self).__init__(
+            len(self.poselist), params.batch_size, y is not None)
 
     def create_matrix_dict(self, cams):
         self.rotation_mx = {}
-        for k, v in cams.iteritems():
+        for k, v in cams.items():
             name = v[-1]
-            assert isinstance(name, basestring)
+            assert isinstance(name, bytes) or isinstance(name, str)
             self.rotation_mx[(k[0], name)] = v[0]
 
     @staticmethod
@@ -151,15 +158,18 @@ class PosNegBatchGenerator(BaseGenerator):
 
     def first_batch(self):
         # Random permutation of poses
-        self.pose1_indices = np.random.permutation(self.N) if self.shuffle else np.arange(self.N)
+        self.pose1_indices = np.random.permutation(
+            self.N) if self.shuffle else np.arange(self.N)
         self.pose2_indices = np.random.permutation(self.N)
 
         # Select cameras randomly
         self.c1 = np.random.randint(0, self.cam_cnt, size=(self.N,))
-        self.c2 = np.mod(self.c1 + np.random.randint(1, self.cam_cnt, size=(self.N,)), self.cam_cnt)
+        self.c2 = np.mod(self.c1 + np.random.randint(1,
+                                                     self.cam_cnt, size=(self.N,)), self.cam_cnt)
 
         # Make random pairs matching
-        matching = np.random.random(self.c1.shape) < self.params.pos_pairs_ratio
+        matching = np.random.random(
+            self.c1.shape) < self.params.pos_pairs_ratio
         self.pose2_indices[matching] = self.pose1_indices[matching]
 
         # Calculate difference between poses
@@ -167,7 +177,8 @@ class PosNegBatchGenerator(BaseGenerator):
                                                 self.absolute_pose[self.pose2_indices])
 
         self.pose_dist = errors * self.params.pose_dist_weight
-        assert np.all((~matching) | (self.pose_dist == 0)), 'somewhere matching but not zero error'
+        assert np.all((~matching) | (self.pose_dist == 0)
+                      ), 'somewhere matching but not zero error'
 
     def get_batch(self, data, width):
         current_batch_size = self.batch_end - self.batch_start
@@ -202,8 +213,10 @@ class PosNegBatchGenerator(BaseGenerator):
 
         rs = np.empty((current_batch_size, 3, 3), dtype=K.floatx())
         for i in range(current_batch_size):
-            k1 = (self.keys[batch_pose1[i, 1]][0], self.params.train_camera_names[batch_c1[i]])
-            k2 = (self.keys[batch_pose2[i, 1]][0], self.params.train_camera_names[batch_c2[i]])
+            k1 = (self.keys[batch_pose1[i, 1]][0],
+                  self.params.train_camera_names[batch_c1[i]])
+            k2 = (self.keys[batch_pose2[i, 1]][0],
+                  self.params.train_camera_names[batch_c2[i]])
             rs[i] = np.dot(self.rotation_mx[k2], self.rotation_mx[k1].T)
 
         return rs

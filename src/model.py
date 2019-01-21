@@ -54,7 +54,7 @@ def dense_block(input, dense_size, n_layers, activation, dropout, residual_enabl
 
 
 def dense_layer(input, dense_size, activation, dropout, batchnorm_enabled, normclip_enabled, name=None):
-    assert name is None or isinstance(name, basestring)
+    assert name is None or isinstance(name, str)
 
     kernel_constraint = None
     if normclip_enabled:

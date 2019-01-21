@@ -28,7 +28,13 @@ unzip pretrained.zip
 rm pretrained.zip
 ```
 
+## 目录
 
+模型和数据集都放在data文件夹下
+
+所有代码都放在src文件夹下
+
+后端必须使用Tensorflow，版本高一点
 
 ## Usage
 
@@ -36,13 +42,13 @@ rm pretrained.zip
 
 To quickly train a model using Protocol 3, use the following command:
 
-``python run.py --epochs 100 --use-augmentation --cross-camera``
+``python run.py --epochs 100 --cross-camera``
 
 ### Evaluating
 
 To evaluate the pretrained model, run the command below:
 
-``python run.py --eval --cross-camera --model-folder ../data/pretrained``
+``python .\src\run.py --eval --cross-camera --model-folder ./data/generated_model``
 
 If you evaluate your own model, make sure it is using the same training protocol  (``--cross-camera`` argument) in testing and training. The pretrained model was created using Protocol 3 (``--cross-camera`` turned on).
 
