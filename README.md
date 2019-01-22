@@ -34,7 +34,7 @@ rm pretrained.zip
 
 所有代码都放在src文件夹下
 
-后端必须使用Tensorflow，版本高一点
+前端必须使用Tensorflow，版本高一点
 
 ## Usage
 
